@@ -53,10 +53,3 @@ poetry install
 ```
 
 3. Настроить БД Postgres.
-
-
-## Ссылки
-
-Документация CREDIT-Service: [ссылка](https://wiki.astondevs.ru/pages/viewpage.action?pageId=24333018).
-
-Репозиторий CREDIT-Service: [https://git.astondevs.ru/aston/a-geld](https://git.astondevs.ru/aston/a-geld).
