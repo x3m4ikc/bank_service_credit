@@ -1,0 +1,71 @@
+stages:
+  - linters
+  - testing
+  - deploy
+  - cleanup
+
+variables:
+  PROJECT: a-geld
+  APP1: user_service
+  APP2: credit_service
+  APP3: transfer_service
+  APP: python
+
+stage_linters:
+  stage:     linters
+  image: python:3.11-slim
+  before_script:
+    - pip install poetry
+    - poetry config virtualenvs.in-project true
+    - poetry install
+  script:
+    - poetry run flake8 --exclude .venv/,poetry.lock,pyproject.toml,migrations --max-line-length 110
+    - poetry run isort .
+
+stage_testing:
+  stage: testing
+  image: python:3.11-slim
+  
+  services:
+   - postgres
+  variables:
+    POSTGRES_DB: microservice_credit
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_PORT: "5432"
+    DATABASE_HOST: postgres
+  before_script:
+    - pip install poetry
+    - poetry config virtualenvs.in-project true
+    - poetry install
+    - poetry run python manage.py migrate
+  script:
+    - poetry run pytest
+
+docker:
+  image: docker:latest
+  stage: testing
+  tags:
+    - shell_geld
+  before_script:
+    - echo "$AND_DOCKER_REGISTRY_RW_PASS" | docker login -u "${AND_REGESTRY_USER_RW}" "${AND_DOCKER_REGISTRY_NAME}" --password-stdin
+  script:
+    - docker build --tag $AND_DOCKER_REGISTRY_NAME/$PROJECT-$APP2:$CI_COMMIT_BRANCH --compress --build-arg BUILDKIT_INLINE_CACHE=1 .
+    - docker push $AND_DOCKER_REGISTRY_NAME/$PROJECT-$APP2:$CI_COMMIT_BRANCH
+
+staging_deploy:
+  stage: deploy
+  tags:
+    - shell_geld
+  before_script:
+    - echo "$AND_DOCKER_REGISTRY_RW_PASS" | docker login -u "${AND_REGESTRY_USER_RW}" "${AND_DOCKER_REGISTRY_NAME}" --password-stdin
+  script:
+    - docker-compose -f docker-compose.yml down || true
+    - docker-compose -f docker-compose.yml up --force-recreate -d
+
+cleanup:
+  stage: cleanup
+  tags:
+    - shell_geld
+  script:
+   - docker system prune -f --filter "label!=keep"
