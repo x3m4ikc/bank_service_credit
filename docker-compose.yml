@@ -1,0 +1,27 @@
+version: "3.9"
+services:
+  db:
+    image: postgres
+    container_name: postgres_credit
+    volumes:
+      - /a-geld/data/db_user:/var/lib/postgresql/data_credit
+    environment:
+      - POSTGRES_DB=microservice_credit
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+  web:
+    image: $AND_DOCKER_REGISTRY_NAME/$PROJECT-$APP2:$CI_COMMIT_BRANCH
+    container_name: ${APP2}
+    command: bash -c "poetry run python manage.py migrate && poetry run python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_NAME=microservice_credit
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - db
